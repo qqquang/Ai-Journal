@@ -18,7 +18,7 @@ export default function Home() {
         return;
       }
       setStatus('success');
-      setMessage('Connected successfully. Ensure the healthcheck table exists or adjust the query.');
+      setMessage('Connected successfully. Ensure the healthcheck table exists.');
     } catch (err) {
       setStatus('error');
       setMessage(err instanceof Error ? err.message : 'Unknown error');

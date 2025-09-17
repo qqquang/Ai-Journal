@@ -25,7 +25,7 @@ export default function App() {
         return;
       }
       setStatus(Status.Success);
-      setMessage('Connected successfully. Create a `healthcheck` table or adjust the query.');
+      setMessage('Connected successfully. Ensure the healthcheck table exists.');
     } catch (err) {
       setStatus(Status.Error);
       setMessage(err instanceof Error ? err.message : 'Unknown error');
