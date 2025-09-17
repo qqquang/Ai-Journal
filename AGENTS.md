@@ -1,34 +1,44 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `Requirements/` holds the PRD and wireframes; version filenames (e.g., `_v3`) when updating.
-- Place product code in `app/` with `app/web` (Next.js) and `app/mobile` (React Native). Keep shared journaling logic, AI prompt builders, and types in `packages/core`.
-- Store research captures in `research/` with a `README.md` noting sources and capture dates.
+- `Requirements/` stores PRDs and wireframes; bump filenames with version suffixes (e.g., `_v3`).
+- Source code lives in `app/` with `app/web` (Next.js) and `app/mobile` (Expo React Native). Shared journaling logic, prompt builders, and types belong in `packages/core` (create as soon as shared code emerges).
+- Save research captures in `research/` plus a `README.md` describing source URLs and capture dates.
+
+## Technology Stack
+- **Frontend:** React Native (Expo) for mobile, Next.js for web companion, shared UI kit to keep parity.
+- **State & Data:** React Query for remote data, lightweight store (Zustand) for local state, React Hook Form for entries.
+- **Backend:** Supabase for auth/Postgres/storage with row-level security; edge functions for business logic.
+- **AI Layer:** Supabase Edge Functions (or Cloudflare Workers) wrapping Gemini/OpenAI with versioned prompts under `packages/core/prompts`.
+- **Analytics:** PostHog (self-hosted via Supabase) for anonymized habit metrics; Supabase logs for auditing.
 
 ## Build, Test, and Development Commands
-- After scaffolding, run `npm install` once at the root. Expected scripts: `npm run dev:web` (Next.js dev server), `npm run ios` / `npm run android` (React Native), `npm run test` (Jest), and `npm run lint` (ESLint + Prettier).
-- Document any additional utilities (`npm run seed:demo`, migrations, etc.) inside `package.json` and mirror them here.
+- Run `npm install` at the repo root to hydrate workspaces. Core scripts:
+  - `npm run dev:web` / `npm run build:web` / `npm run lint:web` / `npm run test:web`
+  - `npm run start:mobile` / `npm run lint:mobile` / `npm run test:mobile`
+- Web app includes `app/web/.env.local.example`; copy to `.env.local` with Supabase URL and anon key. Mobile uses `app/mobile/.env.example`.
+- Record extra utilities (`npm run seed:demo`, migrations) inside `package.json` and mirror them here.
 
 ## Coding Style & Naming Conventions
-- Use TypeScript with 2-space indentation, camelCase for variables/functions, PascalCase for components, and kebab-case file names (e.g., `journal-timeline.tsx`).
-- Prefer functional components with hooks and scoped style files (`journal-entry.styles.ts`).
-- Run `npm run lint` and `npm run format` before every push; keep shared configs in version control.
+- TypeScript with 2-space indentation; camelCase for variables/functions, PascalCase for components, kebab-case file names (`journal-timeline.tsx`).
+- Keep components functional with hooks and scoped style files (`journal-entry.styles.ts`).
+- Run the appropriate `npm run lint:*` before pushing; commit shared ESLint/Prettier configs.
 
 ## Testing Guidelines
-- Adopt Jest + React Testing Library for unit/UI coverage and Detox for high-value mobile flows. Mirror `src/` paths inside `tests/` and suffix with `.test.tsx` or `.spec.ts`.
-- Cover the MVP loop (entry capture → AI reflection → suggested action) and add regression tests for goal tracking once Milestone 2 launches.
-- Stub Gemini responses with fixtures; automated tests must not call live APIs.
+- Jest + React Testing Library for unit/UI tests; Detox for mobile end-to-end flows; Playwright optional for web smoke tests.
+- Mirror `src/` paths under `tests/` and suffix files with `.test.tsx` or `.spec.ts`.
+- Cover the core loop (entry capture → AI reflection → suggested action). Stub Gemini responses; no live AI calls in CI.
 
 ## Commit & Pull Request Guidelines
 - Write present-tense commits (`Implement AI reflection layout`, `Fix goal tracker totals #23`).
-- Pull requests should restate the problem, list key changes, describe user impact, and include screenshots or videos for UI updates. Call out new environment variables or scripts.
-- Rebase onto `main` before requesting review and confirm lint/tests pass locally.
+- Pull requests restate the problem, list key changes, note user impact, and attach screenshots or screen recordings for UI updates. Call out new env vars or scripts.
+- Rebase onto `main` before requesting review and ensure lint/tests pass locally.
 
 ## Product Milestones (PRD Context)
-- Milestone 1: minimalist journal canvas with timestamped entries and a right-rail AI reflection (reflection, insight/reframe, action prompt).
+- Milestone 1: journaling canvas with timestamped entries and right-rail AI reflection (reflection, reframe, action prompt).
 - Milestone 2: goal setup, AI reframing of vague goals, and weekly nudges tied to entries.
-- Milestone 3: pattern recognition with monthly progress reports; focus on earlier milestones before tackling this layer.
+- Milestone 3: pattern recognition with monthly progress reports; ship milestones sequentially.
 
 ## Security & Configuration Tips
-- Keep API keys (e.g., `GEMINI_API_KEY`) and secrets in `.env.local` and share via the approved secret manager; ensure the file stays git-ignored.
-- Anonymize journals and research exports. Scrub personal data from logs or screenshots attached to issues.
+- Keep secrets (e.g., `SUPABASE_SERVICE_ROLE`, `GEMINI_API_KEY`) in git-ignored env files and share via the approved secret manager.
+- Anonymize journals and research exports. Strip personal data from logs or screenshots attached to issues.

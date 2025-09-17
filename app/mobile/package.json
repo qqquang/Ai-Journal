@@ -1,0 +1,28 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "eslint .",
+    "test": "echo \"Add mobile tests (Jest/Detox) here\" && exit 0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "expo": "~54.0.7",
+    "expo-status-bar": "~3.0.8",
+    "react": "19.1.0",
+    "react-native": "0.81.4",
+    "react-native-url-polyfill": "^2.0.0"
+  },
+  "devDependencies": {
+    "@react-native-community/eslint-config": "^3.2.0",
+    "@types/react": "~19.1.0",
+    "eslint": "^8.57.1",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}

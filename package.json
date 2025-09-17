@@ -1,0 +1,17 @@
+{
+  "name": "ai-journal-monorepo",
+  "private": true,
+  "workspaces": [
+    "app/web",
+    "app/mobile"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace app/web run dev",
+    "build:web": "npm --workspace app/web run build",
+    "lint:web": "npm --workspace app/web run lint",
+    "test:web": "npm --workspace app/web run test",
+    "start:mobile": "npm --workspace app/mobile run start",
+    "lint:mobile": "npm --workspace app/mobile run lint",
+    "test:mobile": "npm --workspace app/mobile run test"
+  }
+}
