@@ -4,10 +4,17 @@ import type { Session } from '@supabase/supabase-js';
 import Home from '../page';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 
+process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://example.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'anon-key';
+
+const globalConsoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
 jest.mock('@/lib/supabaseClient', () => ({
   createSupabaseBrowserClient: jest.fn(),
   supabaseEnvReady: true,
 }));
+
+const createSupabaseBrowserClientMock = createSupabaseBrowserClient as jest.Mock;
 
 type ReflectionOverrides = {
   reflection?: string;
@@ -71,13 +78,15 @@ const createSupabaseStub = ({ session, reflection, action }: SupabaseOverrides) 
   };
 };
 
-const createSupabaseBrowserClientMock = createSupabaseBrowserClient as jest.Mock;
-
 describe('Home page', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+  });
+
+  afterAll(() => {
+    globalConsoleWarnSpy.mockRestore();
   });
 
   it('disables reflection generation when the user is signed out', async () => {
@@ -151,5 +160,46 @@ describe('Home page', () => {
         }),
       }),
     );
+  });
+
+  it('closes the account menu when clicking outside', async () => {
+    const supabase = createSupabaseStub({ session: null });
+    createSupabaseBrowserClientMock.mockReturnValue(supabase);
+
+    render(<Home />);
+
+    const accountButton = screen.getByLabelText(/account menu/i);
+    const user = userEvent.setup();
+    await user.click(accountButton);
+
+    expect(await screen.findByLabelText(/email/i)).toBeInTheDocument();
+
+    await user.click(document.body);
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('prevents reflection generation when the journal entry is empty', async () => {
+    const session = {
+      user: {
+        id: 'user-321',
+        email: 'author@example.com',
+      },
+    } as unknown as Session;
+    const supabase = createSupabaseStub({ session });
+    createSupabaseBrowserClientMock.mockReturnValue(supabase);
+
+    render(<Home />);
+
+    const generateButton = screen.getByRole('button', { name: /generate reflection/i });
+    const user = userEvent.setup();
+    await user.click(generateButton);
+
+    expect(
+      await screen.findByText(/Add a journal entry before requesting a reflection/i),
+    ).toBeInTheDocument();
+    expect(supabase.functions.invoke).not.toHaveBeenCalled();
   });
 });

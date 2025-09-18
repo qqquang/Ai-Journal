@@ -312,7 +312,11 @@ export default function App() {
           onRequestClose={() => setAccountVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setAccountVisible(false)} />
+            <Pressable
+              testID="account-modal-overlay"
+              style={StyleSheet.absoluteFill}
+              onPress={() => setAccountVisible(false)}
+            />
             <View style={styles.modalCard}>
               {session ? (
                 <View style={styles.modalContent}>
