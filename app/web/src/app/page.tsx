@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import type { Session } from '@supabase/supabase-js';
-import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
+import { createSupabaseBrowserClient, supabaseEnvReady } from '@/lib/supabaseClient';
 
 type FlowStatus = 'idle' | 'saving' | 'reflecting' | 'success' | 'error';
 type AuthStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -19,9 +19,7 @@ const getAccountInitial = (currentSession: Session | null) => {
 };
 
 export default function Home() {
-  const supabaseEnvConfigured = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+  const supabaseEnvConfigured = supabaseEnvReady;
 
   const supabase = useMemo(
     () => (supabaseEnvConfigured ? createSupabaseBrowserClient() : null),

@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 
 jest.mock('@/lib/supabaseClient', () => ({
   createSupabaseBrowserClient: jest.fn(),
+  supabaseEnvReady: true,
 }));
 
 type ReflectionOverrides = {
@@ -116,13 +117,15 @@ describe('Home page', () => {
     render(<Home />);
 
     const accountButton = screen.getByLabelText(/account menu/i);
-    expect(accountButton).toHaveTextContent('J');
+    const user = userEvent.setup();
+    await user.click(accountButton);
+
+    expect(await screen.findByText(/Signed in as journaler@example.com/i)).toBeInTheDocument();
 
     const goalInput = screen.getByLabelText(/goal/i);
     const entryInput = screen.getByLabelText(/journal entry/i);
     const generateButton = screen.getByRole('button', { name: /generate reflection/i });
 
-    const user = userEvent.setup();
     await user.type(goalInput, 'Ship the MVP');
     await user.type(entryInput, 'Today I validated Gemini reflections.');
     await user.click(generateButton);
