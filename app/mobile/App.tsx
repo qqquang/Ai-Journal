@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
+  Modal,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -17,6 +19,14 @@ type AuthStatus = 'idle' | 'loading' | 'success' | 'error';
 
 const INITIAL_FEEDBACK = 'Sign in, capture a goal, and write an entry to generate a reflection.';
 
+const getAccountInitial = (currentSession: Session | null) => {
+  const email = currentSession?.user?.email;
+  if (email && email.length > 0) {
+    return email.charAt(0).toUpperCase();
+  }
+  return 'A';
+};
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
 
@@ -31,7 +41,7 @@ export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [authExpanded, setAuthExpanded] = useState(false);
+  const [accountVisible, setAccountVisible] = useState(false);
 
   const supabaseConfigured = Boolean(
     process.env.EXPO_PUBLIC_SUPABASE_URL && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
@@ -74,10 +84,10 @@ export default function App() {
       setAuthStatus('idle');
       setMagicLinkSent(false);
       setFeedback(null);
-      setAuthExpanded(false);
+      setAccountVisible(false);
     } else {
       setFeedback(INITIAL_FEEDBACK);
-      setAuthExpanded(false);
+      setAccountVisible(false);
     }
   }, [session]);
 
@@ -87,7 +97,7 @@ export default function App() {
     setAuthMessage(message);
   }, []);
 
-  const handleSignIn = useCallback(async () => {
+  const handleSignIn = useCallback(async (onComplete?: () => void) => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -101,13 +111,15 @@ export default function App() {
       setAuthStatus('success');
       setAuthMessage('Signed in successfully.');
       setAuthPassword('');
-      setAuthExpanded(false);
+      onComplete?.();
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to sign in with those credentials.');
+      return false;
     }
   }, [authEmail, authPassword, handleAuthError]);
 
-  const handleSignUp = useCallback(async () => {
+  const handleSignUp = useCallback(async (onComplete?: () => void) => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -121,8 +133,11 @@ export default function App() {
       setAuthStatus('success');
       setAuthMessage('Account created. Check your inbox for a confirmation email.');
       setAuthPassword('');
+      onComplete?.();
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to sign up with those details.');
+      return false;
     }
   }, [authEmail, authPassword, handleAuthError]);
 
@@ -142,12 +157,14 @@ export default function App() {
       setAuthStatus('success');
       setMagicLinkSent(true);
       setAuthMessage('Magic link sent. Check your email to finish signing in.');
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to send a magic link right now.');
+      return false;
     }
   }, [authEmail, handleAuthError]);
 
-  const handleSignOut = useCallback(async () => {
+  const handleSignOut = useCallback(async (onComplete?: () => void) => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -160,9 +177,11 @@ export default function App() {
       setGoal('');
       setJournalEntry('');
       setAiResponse('');
-      setAuthExpanded(false);
+      onComplete?.();
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to sign out at the moment.');
+      return false;
     }
   }, [handleAuthError]);
 
@@ -260,112 +279,125 @@ export default function App() {
     }
   }, [goal, journalEntry, session, supabaseConfigured]);
 
+  const accountInitial = getAccountInitial(session);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.title}>AI Journal Companion</Text>
-          <Text style={styles.subtitle}>
-            Capture your goal, reflect on your day, then generate an AI reflection to highlight patterns and next steps.
-          </Text>
+        <View style={styles.topBar}>
+          <View style={styles.headingGroup}>
+            <Text style={styles.title}>AI Journal Companion</Text>
+            <Text style={styles.subtitle}>
+              Capture your goal, reflect on your day, then generate an AI reflection to highlight patterns and next steps.
+            </Text>
+          </View>
+          <TouchableOpacity
+            accessibilityLabel="Account menu"
+            onPress={() => setAccountVisible(true)}
+            style={styles.accountButton}
+          >
+            {session ? (
+              <Text style={styles.accountButtonInitial}>{accountInitial}</Text>
+            ) : (
+              <Text style={styles.accountButtonLabel}>Sign in</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.authCard}>
-          <View style={styles.authHeader}>
-            <View style={styles.flexColumn}>
-              <Text style={styles.authTitle}>Account</Text>
-              <Text style={styles.authSubtitle}>
-                {session
-                  ? `Signed in as ${session.user.email ?? 'your account'}.`
-                  : 'Sign in to save journal entries and generate reflections.'}
-              </Text>
-            </View>
-            <View style={styles.authActionsRow}>
-              {!session && (
-                <TouchableOpacity
-                  onPress={() => setAuthExpanded((prev) => !prev)}
-                  style={styles.secondaryButton}
-                >
-                  <Text style={styles.secondaryButtonLabel}>
-                    {authExpanded ? 'Hide account actions' : 'Show account actions'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+        <Modal
+          visible={accountVisible}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setAccountVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setAccountVisible(false)} />
+            <View style={styles.modalCard}>
               {session ? (
-                <TouchableOpacity
-                  onPress={handleSignOut}
-                  disabled={isAuthLoading}
-                  style={[styles.signOutButton, isAuthLoading && styles.buttonDisabled]}
-                >
-                  <Text style={styles.signOutButtonLabel}>Sign out</Text>
-                </TouchableOpacity>
-              ) : null}
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Account</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Signed in as {session.user.email ?? 'your account'}.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await handleSignOut(() => setAccountVisible(false));
+                    }}
+                    disabled={isAuthLoading}
+                    style={[styles.modalButton, isAuthLoading && styles.buttonDisabled]}
+                  >
+                    <Text style={styles.modalButtonLabel}>Sign out</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Welcome back</Text>
+                  <Text style={styles.modalSubtitle}>Use email to sign in or request a magic link.</Text>
+                  <View style={styles.modalFieldGroup}>
+                    <Text style={styles.modalLabel}>Email</Text>
+                    <TextInput
+                      value={authEmail}
+                      onChangeText={setAuthEmail}
+                      placeholder="you@example.com"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      style={styles.modalInput}
+                    />
+                  </View>
+                  <View style={styles.modalFieldGroup}>
+                    <Text style={styles.modalLabel}>Password</Text>
+                    <TextInput
+                      value={authPassword}
+                      onChangeText={setAuthPassword}
+                      placeholder="Choose a secure password"
+                      secureTextEntry
+                      autoCapitalize="none"
+                      style={styles.modalInput}
+                    />
+                  </View>
+                  <View style={styles.modalActionsRow}>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await handleSignIn(() => setAccountVisible(false));
+                      }}
+                      disabled={isAuthLoading}
+                      style={[styles.primaryButton, isAuthLoading && styles.buttonDisabled]}
+                    >
+                      <Text style={styles.primaryButtonLabel}>Sign in</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await handleSignUp(() => setAccountVisible(false));
+                      }}
+                      disabled={isAuthLoading}
+                      style={[styles.secondaryButton, isAuthLoading && styles.buttonDisabled]}
+                    >
+                      <Text style={styles.secondaryButtonLabel}>Sign up</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await handleMagicLink();
+                    }}
+                    disabled={isAuthLoading || magicLinkSent}
+                    style={[styles.secondaryButton, (isAuthLoading || magicLinkSent) && styles.buttonDisabled]}
+                  >
+                    <Text style={styles.secondaryButtonLabel}>
+                      {magicLinkSent ? 'Magic link sent' : 'Send magic link'}
+                    </Text>
+                  </TouchableOpacity>
+                  {authMessage ? (
+                    <Text style={[styles.feedback, authStatus === 'error' ? styles.error : styles.success]}>
+                      {authMessage}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
             </View>
           </View>
-
-          {!session && authExpanded ? (
-            <View style={styles.authForm}>
-              <View style={styles.authInputsRow}>
-                <View style={styles.flexColumn}>
-                  <Text style={styles.inputLabel}>Email</Text>
-                  <TextInput
-                    value={authEmail}
-                    onChangeText={setAuthEmail}
-                    placeholder="you@example.com"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={styles.singleLineInput}
-                  />
-                </View>
-                <View style={styles.flexColumn}>
-                  <Text style={styles.inputLabel}>Password</Text>
-                  <TextInput
-                    value={authPassword}
-                    onChangeText={setAuthPassword}
-                    placeholder="Choose a secure password"
-                    secureTextEntry
-                    autoCapitalize="none"
-                    style={styles.singleLineInput}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.authButtonsRow}>
-                <TouchableOpacity
-                  onPress={handleSignIn}
-                  disabled={isAuthLoading}
-                  style={[styles.primaryButton, isAuthLoading && styles.buttonDisabled]}
-                >
-                  <Text style={styles.primaryButtonLabel}>Sign in</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleSignUp}
-                  disabled={isAuthLoading}
-                  style={[styles.secondaryButton, isAuthLoading && styles.buttonDisabled]}
-                >
-                  <Text style={styles.secondaryButtonLabel}>Sign up</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleMagicLink}
-                  disabled={isAuthLoading || magicLinkSent}
-                  style={[styles.secondaryButton, (isAuthLoading || magicLinkSent) && styles.buttonDisabled]}
-                >
-                  <Text style={styles.secondaryButtonLabel}>
-                    {magicLinkSent ? 'Magic link sent' : 'Send magic link'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {authMessage ? (
-                <Text style={[styles.feedback, authStatus === 'error' ? styles.error : styles.success]}>
-                  {authMessage}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
+        </Modal>
 
         <View style={styles.section}>
           <Text style={styles.label}>Goal</Text>
@@ -441,82 +473,108 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     gap: 24,
   },
-  header: {
-    alignItems: 'center',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  headingGroup: {
+    flex: 1,
     gap: 12,
   },
   title: {
     fontSize: 24,
     fontWeight: '600',
     color: '#0f172a',
-    textAlign: 'center',
   },
   subtitle: {
-    textAlign: 'center',
+    textAlign: 'left',
     color: '#475569',
     fontSize: 15,
     lineHeight: 22,
   },
-  authCard: {
-    gap: 16,
+  accountButton: {
     borderWidth: 1,
     borderColor: '#cbd5f5',
-    borderRadius: 16,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: '#fff',
-    padding: 20,
-  },
-  authHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    minWidth: 80,
   },
-  authActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  flexColumn: {
-    flex: 1,
-  },
-  authTitle: {
-    fontSize: 16,
+  accountButtonLabel: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#0f172a',
   },
-  authSubtitle: {
+  accountButtonInitial: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    backgroundColor: '#0f172a',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    padding: 20,
+  },
+  modalContent: {
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  modalSubtitle: {
     fontSize: 14,
     color: '#475569',
-    marginTop: 4,
   },
-  signOutButton: {
+  modalFieldGroup: {
+    gap: 6,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0f172a',
+  },
+  modalInput: {
     borderWidth: 1,
     borderColor: '#cbd5f5',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    fontSize: 15,
     backgroundColor: '#fff',
   },
-  signOutButtonLabel: {
+  modalButton: {
+    borderWidth: 1,
+    borderColor: '#cbd5f5',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  modalButtonLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#0f172a',
-  },
-  authForm: {
-    gap: 16,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-  },
-  authInputsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#0f172a',
-    marginBottom: 6,
   },
   section: {
     gap: 8,
@@ -546,7 +604,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     backgroundColor: '#fff',
   },
-  authButtonsRow: {
+  modalActionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
@@ -569,6 +627,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
+    alignItems: 'center',
   },
   secondaryButtonLabel: {
     color: '#0f172a',

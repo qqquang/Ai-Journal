@@ -79,7 +79,7 @@ describe('Home page', () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
   });
 
-  it('disables reflection generation when the user is signed out', () => {
+  it('disables reflection generation when the user is signed out', async () => {
     const supabase = createSupabaseStub({ session: null });
     createSupabaseBrowserClientMock.mockReturnValue(supabase);
 
@@ -88,10 +88,12 @@ describe('Home page', () => {
     expect(
       screen.getByRole('button', { name: /sign in to generate/i }),
     ).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: /show account actions/i }),
-    ).toBeInTheDocument();
+    const accountButton = screen.getByLabelText(/account menu/i);
+    expect(accountButton).toBeInTheDocument();
     expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(accountButton);
+    expect(await screen.findByLabelText(/email/i)).toBeInTheDocument();
     expect(
       screen.getByText(/sign in, capture a goal, and write an entry/i),
     ).toBeInTheDocument();
@@ -113,7 +115,8 @@ describe('Home page', () => {
 
     render(<Home />);
 
-    await screen.findByText(/signed in as journaler@example.com/i);
+    const accountButton = screen.getByLabelText(/account menu/i);
+    expect(accountButton).toHaveTextContent('J');
 
     const goalInput = screen.getByLabelText(/goal/i);
     const entryInput = screen.getByLabelText(/journal entry/i);

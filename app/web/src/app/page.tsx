@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Popover, Transition } from '@headlessui/react';
+import { UserCircleIcon } from '@heroicons/react/24/outline';
 import type { Session } from '@supabase/supabase-js';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 
@@ -8,6 +10,14 @@ type FlowStatus = 'idle' | 'saving' | 'reflecting' | 'success' | 'error';
 type AuthStatus = 'idle' | 'loading' | 'success' | 'error';
 
 const INITIAL_FEEDBACK = 'Sign in, capture a goal, and write an entry to generate a reflection.';
+
+const getAccountInitial = (currentSession: Session | null) => {
+  const email = currentSession?.user?.email;
+  if (email && email.length > 0) {
+    return email.charAt(0).toUpperCase();
+  }
+  return 'A';
+};
 
 export default function Home() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -24,7 +34,6 @@ export default function Home() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [authExpanded, setAuthExpanded] = useState(false);
 
   const supabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -67,10 +76,8 @@ export default function Home() {
       setAuthStatus('idle');
       setMagicLinkSent(false);
       setFeedback(null);
-      setAuthExpanded(false);
     } else {
       setFeedback(INITIAL_FEEDBACK);
-      setAuthExpanded(false);
     }
   }, [session]);
 
@@ -80,7 +87,7 @@ export default function Home() {
     setAuthMessage(message);
   }, []);
 
-  const handleSignIn = useCallback(async () => {
+  const handleSignIn = useCallback(async (onComplete?: () => void) => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -94,13 +101,15 @@ export default function Home() {
       setAuthStatus('success');
       setAuthMessage('Signed in successfully.');
       setAuthPassword('');
-      setAuthExpanded(false);
+      onComplete?.();
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to sign in with those credentials.');
+      return false;
     }
   }, [authEmail, authPassword, supabase, handleAuthError]);
 
-  const handleSignUp = useCallback(async () => {
+  const handleSignUp = useCallback(async (onComplete?: () => void) => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -114,8 +123,11 @@ export default function Home() {
       setAuthStatus('success');
       setAuthMessage('Account created. Check your inbox for a confirmation email.');
       setAuthPassword('');
+      onComplete?.();
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to sign up with those details.');
+      return false;
     }
   }, [authEmail, authPassword, supabase, handleAuthError]);
 
@@ -136,12 +148,14 @@ export default function Home() {
       setAuthStatus('success');
       setMagicLinkSent(true);
       setAuthMessage('Magic link sent. Check your email to finish signing in.');
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to send a magic link right now.');
+      return false;
     }
   }, [authEmail, supabase, handleAuthError]);
 
-  const handleSignOut = useCallback(async () => {
+  const handleSignOut = useCallback(async (onComplete?: () => void) => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -154,8 +168,11 @@ export default function Home() {
       setGoal('');
       setJournalEntry('');
       setAiResponse('');
+      onComplete?.();
+      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to sign out at the moment.');
+      return false;
     }
   }, [supabase, handleAuthError]);
 
@@ -253,114 +270,140 @@ export default function Home() {
     }
   }, [goal, journalEntry, session, supabaseConfigured, supabase]);
 
+  const accountInitial = getAccountInitial(session);
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col items-center gap-10 px-4 py-12">
-      <header className="max-w-2xl text-center">
-        <h1 className="text-3xl font-semibold">Mindful Journal</h1>
-        <p className="mt-4 text-base text-slate-600">
-          Capture a goal, reflect in your journal, then generate an AI reflection to discover trends and next steps.
-        </p>
-      </header>
-
-      <section className="flex w-full max-w-3xl flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">Account</h2>
-            <p className="text-sm text-slate-600">
-              {session
-                ? `Signed in as ${session.user.email ?? 'your account'}.`
-                : 'Sign in to save journal entries and generate reflections.'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {!session ? (
-              <button
-                type="button"
-                onClick={() => setAuthExpanded((prev) => !prev)}
-                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-10 px-4 py-12">
+      <div className="flex w-full flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+        <header className="max-w-2xl space-y-4">
+          <h1 className="text-3xl font-semibold">Mindful Journal</h1>
+          <p className="text-base text-slate-600">
+            Capture a goal, reflect in your journal, then generate an AI reflection to discover trends and next steps.
+            Ensure you are signed in so entries can be saved to Supabase.
+          </p>
+        </header>
+        <Popover className="relative h-fit">
+          {({ close }) => (
+            <>
+              <Popover.Button
+                aria-label="Account menu"
+                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
               >
-                {authExpanded ? 'Hide account actions' : 'Show account actions'}
-              </button>
-            ) : null}
-            {session ? (
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={isAuthLoading}
-                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                {session ? (
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+                    {accountInitial}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <UserCircleIcon className="h-6 w-6 text-slate-700" />
+                    <span className="hidden sm:inline">Sign in</span>
+                  </span>
+                )}
+              </Popover.Button>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="opacity-0 translate-y-1"
+                enterTo="opacity-100 translate-y-0"
+                leave="transition ease-in duration-75"
+                leaveFrom="opacity-100 translate-y-0"
+                leaveTo="opacity-0 translate-y-1"
               >
-                Sign out
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        {!session && authExpanded ? (
-          <div className="mt-2 flex flex-col gap-4 border-t border-slate-200 pt-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="auth-email">
-                  Email
-                </label>
-                <input
-                  id="auth-email"
-                  type="email"
-                  autoComplete="email"
-                  value={authEmail}
-                  onChange={(event) => setAuthEmail(event.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-base shadow-sm focus:border-slate-900 focus:outline-none"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-slate-700" htmlFor="auth-password">
-                  Password
-                </label>
-                <input
-                  id="auth-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={authPassword}
-                  onChange={(event) => setAuthPassword(event.target.value)}
-                  placeholder="Choose a secure password"
-                  className="w-full rounded-md border border-slate-200 px-3 py-2 text-base shadow-sm focus:border-slate-900 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleSignIn}
-                disabled={isAuthLoading}
-                className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={handleSignUp}
-                disabled={isAuthLoading}
-                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Sign up
-              </button>
-              <button
-                type="button"
-                onClick={handleMagicLink}
-                disabled={isAuthLoading || magicLinkSent}
-                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {magicLinkSent ? 'Magic link sent' : 'Send magic link'}
-              </button>
-            </div>
-
-            {authMessage ? (
-              <p className={`text-sm ${authStatus === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{authMessage}</p>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
+                <Popover.Panel className="absolute right-0 z-30 mt-3 w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-lg">
+                  {session ? (
+                    <div className="flex flex-col gap-3">
+                      <p className="text-sm text-slate-600">
+                        Signed in as {session.user.email ?? 'your account'}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await handleSignOut(() => close());
+                        }}
+                        className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                        disabled={isAuthLoading}
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  ) : (
+                    <form
+                      className="flex flex-col gap-3"
+                      onSubmit={async (event) => {
+                        event.preventDefault();
+                        await handleSignIn(() => close());
+                      }}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-slate-700" htmlFor="account-email">
+                          Email
+                        </label>
+                        <input
+                          id="account-email"
+                          type="email"
+                          autoComplete="email"
+                          value={authEmail}
+                          onChange={(event) => setAuthEmail(event.target.value)}
+                          placeholder="you@example.com"
+                          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-slate-700" htmlFor="account-password">
+                          Password
+                        </label>
+                        <input
+                          id="account-password"
+                          type="password"
+                          autoComplete="current-password"
+                          value={authPassword}
+                          onChange={(event) => setAuthPassword(event.target.value)}
+                          placeholder="Choose a secure password"
+                          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="submit"
+                          className="inline-flex flex-1 items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                          disabled={isAuthLoading}
+                        >
+                          Sign in
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleSignUp(() => close());
+                          }}
+                          className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={isAuthLoading}
+                        >
+                          Sign up
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await handleMagicLink();
+                        }}
+                        className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={isAuthLoading || magicLinkSent}
+                      >
+                        {magicLinkSent ? 'Magic link sent' : 'Send magic link'}
+                      </button>
+                      {authMessage ? (
+                        <p className={`text-xs ${authStatus === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
+                          {authMessage}
+                        </p>
+                      ) : null}
+                    </form>
+                  )}
+                </Popover.Panel>
+              </Transition>
+            </>
+          )}
+        </Popover>
+      </div>
 
       <section className="flex w-full max-w-3xl flex-col gap-6">
         <div className="flex flex-col gap-2">
