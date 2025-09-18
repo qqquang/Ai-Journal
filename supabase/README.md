@@ -46,6 +46,17 @@ This migration creates:
    ```bash
    supabase functions deploy generate-reflection --project-ref <project-ref>
    ```
+5. During development run the function locally alongside the studio:
+   ```bash
+   supabase functions serve generate-reflection --project-ref <project-ref>
+   ```
+6. Smoke test the output:
+   ```bash
+   curl -X POST \
+     -H "Content-Type: application/json" \
+     "http://localhost:54321/functions/v1/generate-reflection" \
+     -d '{"entryId":"example","goal":"Ship MVP","content":"Today I iterated on the journaling screen and felt energized."}'
+   ```
 
 ## 5. Environment Variables
 Populate the environment files with project keys:
