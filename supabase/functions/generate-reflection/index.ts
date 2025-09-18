@@ -42,7 +42,7 @@ serve(async (request) => {
     return jsonResponse({ error: "Both entryId and content are required." }, 422);
   }
 
-  const aiResponse = await tryOpenAi(goal, content);
+  const aiResponse = await tryGemini(goal, content);
 
   if (aiResponse) {
     return jsonResponse(aiResponse, 200);
@@ -126,63 +126,64 @@ function matchCount(target: string, needles: string[]): number {
   return needles.reduce((count, needle) => (target.includes(needle) ? count + 1 : count), 0);
 }
 
-async function tryOpenAi(goal: string, content: string): Promise<ReflectionResponse | null> {
-  const openAiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openAiKey) {
+async function tryGemini(goal: string, content: string): Promise<ReflectionResponse | null> {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiKey) {
     return null;
   }
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openAiKey}`,
+    const prompt = [
+      "Goal: ",
+      goal || "(none provided)",
+      "\nJournal entry: ",
+      content,
+      "\nReturn compact JSON with keys 'reflection' and optional 'action'.",
+    ].join("");
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            responseMimeType: "application/json",
+          },
+        }),
       },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an empathetic journaling coach. Respond with concise JSON containing `reflection` and optional `action` fields.",
-          },
-          {
-            role: "user",
-            content: [
-              "Goal: ",
-              goal || "(none provided)",
-              "\nJournal entry: ",
-              content,
-              "\nReturn JSON, for example {\"reflection\":\"...\",\"action\":\"...\"}.",
-            ].join(""),
-          },
-        ],
-      }),
-    });
+    );
 
     if (!response.ok) {
-      console.error("OpenAI request failed", response.status, await response.text());
+      console.error("Gemini request failed", response.status, await response.text());
       return null;
     }
 
     const completion = await response.json();
-    const message: string | undefined = completion?.choices?.[0]?.message?.content;
+    const message: string | undefined = completion?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!message) {
-      console.error("OpenAI completion missing content", completion);
+      console.error("Gemini completion missing content", completion);
       return null;
     }
 
     const parsed = safeJsonParse<ReflectionResponse>(message);
     if (!parsed?.reflection) {
-      console.error("OpenAI completion did not include reflection", message);
+      console.error("Gemini completion did not include reflection", message);
       return null;
     }
 
     return parsed;
   } catch (error) {
-    console.error("Unable to generate reflection via OpenAI", error);
+    console.error("Unable to generate reflection via Gemini", error);
     return null;
   }
 }
@@ -200,17 +201,13 @@ function safeJsonParse<T>(raw: string): T | null {
  * Replace the heuristic logic above with a real AI call when you are ready:
  *
  * ```ts
- * const openaiKey = Deno.env.get('OPENAI_API_KEY');
- * const response = await fetch('https://api.openai.com/v1/responses', {
- *   method: 'POST',
- *   headers: {
- *     'Content-Type': 'application/json',
- *     Authorization: `Bearer ${openaiKey}`,
+ * const response = await fetch(
+ *   `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${Deno.env.get('GEMINI_API_KEY')}`,
+ *   {
+ *     method: 'POST',
+ *     headers: { 'Content-Type': 'application/json' },
+ *     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
  *   },
- *   body: JSON.stringify({
- *     model: 'gpt-4.1-mini',
- *     input: `Goal: ${goal}\nEntry: ${content}\nReflect on the emotional tone and suggest a next action.`,
- *   }),
  * });
  * ```
  */

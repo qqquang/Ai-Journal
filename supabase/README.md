@@ -57,9 +57,9 @@ This migration creates:
      "http://localhost:54321/functions/v1/generate-reflection" \
      -d '{"entryId":"example","goal":"Ship MVP","content":"Today I iterated on the journaling screen and felt energized."}'
    ```
-7. Store your OpenAI key so the function can call the model (optional fallback will run without it):
+7. Store your Gemini API key so the function can call the model (optional fallback will run without it):
    ```bash
-   supabase secrets set OPENAI_API_KEY=sk-...
+   supabase secrets set GEMINI_API_KEY=ya29....
    ```
 
 ## 5. Environment Variables
