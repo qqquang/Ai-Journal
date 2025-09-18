@@ -19,7 +19,14 @@ const getAccountInitial = (currentSession: Session | null) => {
 };
 
 export default function Home() {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const supabaseEnvConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+
+  const supabase = useMemo(
+    () => (supabaseEnvConfigured ? createSupabaseBrowserClient() : null),
+    [supabaseEnvConfigured],
+  );
 
   const [session, setSession] = useState<Session | null>(null);
   const [goal, setGoal] = useState('');
@@ -37,13 +44,14 @@ export default function Home() {
 
   const menuContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const supabaseConfigured = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
   const isGenerating = status === 'saving' || status === 'reflecting';
   const isAuthLoading = authStatus === 'loading';
 
   useEffect(() => {
+    if (!supabase) {
+      return () => {};
+    }
+
     let isMounted = true;
 
     supabase.auth.getSession().then(({ data, error }) => {
@@ -106,6 +114,12 @@ export default function Home() {
   }, []);
 
   const handleSignIn = useCallback(async () => {
+    if (!supabase) {
+      setAuthStatus('error');
+      setAuthMessage('Supabase environment variables are not configured.');
+      return;
+    }
+
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -126,6 +140,12 @@ export default function Home() {
   }, [authEmail, authPassword, supabase, handleAuthError]);
 
   const handleSignUp = useCallback(async () => {
+    if (!supabase) {
+      setAuthStatus('error');
+      setAuthMessage('Supabase environment variables are not configured.');
+      return;
+    }
+
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -146,6 +166,12 @@ export default function Home() {
   }, [authEmail, authPassword, supabase, handleAuthError]);
 
   const handleMagicLink = useCallback(async () => {
+    if (!supabase) {
+      setAuthStatus('error');
+      setAuthMessage('Supabase environment variables are not configured.');
+      return;
+    }
+
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -168,6 +194,12 @@ export default function Home() {
   }, [authEmail, supabase, handleAuthError]);
 
   const handleSignOut = useCallback(async () => {
+    if (!supabase) {
+      setAuthStatus('error');
+      setAuthMessage('Supabase environment variables are not configured.');
+      return;
+    }
+
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -187,7 +219,7 @@ export default function Home() {
   }, [supabase, handleAuthError]);
 
   const handleGenerate = useCallback(async () => {
-    if (!supabaseConfigured) {
+    if (!supabaseEnvConfigured || !supabase) {
       setFeedback('Supabase environment variables are missing. Update .env.local before generating reflections.');
       setStatus('error');
       return;
@@ -278,7 +310,7 @@ export default function Home() {
       setFeedback(message);
       setStatus('error');
     }
-  }, [goal, journalEntry, session, supabaseConfigured, supabase]);
+  }, [goal, journalEntry, session, supabaseEnvConfigured, supabase]);
 
   const accountInitial = getAccountInitial(session);
 
