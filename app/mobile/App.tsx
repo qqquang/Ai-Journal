@@ -31,6 +31,7 @@ export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [authExpanded, setAuthExpanded] = useState(false);
 
   const supabaseConfigured = Boolean(
     process.env.EXPO_PUBLIC_SUPABASE_URL && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
@@ -73,8 +74,10 @@ export default function App() {
       setAuthStatus('idle');
       setMagicLinkSent(false);
       setFeedback(null);
+      setAuthExpanded(false);
     } else {
       setFeedback(INITIAL_FEEDBACK);
+      setAuthExpanded(false);
     }
   }, [session]);
 
@@ -98,6 +101,7 @@ export default function App() {
       setAuthStatus('success');
       setAuthMessage('Signed in successfully.');
       setAuthPassword('');
+      setAuthExpanded(false);
     } catch (error) {
       handleAuthError(error, 'Unable to sign in with those credentials.');
     }
@@ -156,6 +160,7 @@ export default function App() {
       setGoal('');
       setJournalEntry('');
       setAiResponse('');
+      setAuthExpanded(false);
     } catch (error) {
       handleAuthError(error, 'Unable to sign out at the moment.');
     }
@@ -276,18 +281,30 @@ export default function App() {
                   : 'Sign in to save journal entries and generate reflections.'}
               </Text>
             </View>
-            {session ? (
-              <TouchableOpacity
-                onPress={handleSignOut}
-                disabled={isAuthLoading}
-                style={[styles.signOutButton, isAuthLoading && styles.buttonDisabled]}
-              >
-                <Text style={styles.signOutButtonLabel}>Sign out</Text>
-              </TouchableOpacity>
-            ) : null}
+            <View style={styles.authActionsRow}>
+              {!session && (
+                <TouchableOpacity
+                  onPress={() => setAuthExpanded((prev) => !prev)}
+                  style={styles.secondaryButton}
+                >
+                  <Text style={styles.secondaryButtonLabel}>
+                    {authExpanded ? 'Hide account actions' : 'Show account actions'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {session ? (
+                <TouchableOpacity
+                  onPress={handleSignOut}
+                  disabled={isAuthLoading}
+                  style={[styles.signOutButton, isAuthLoading && styles.buttonDisabled]}
+                >
+                  <Text style={styles.signOutButtonLabel}>Sign out</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
 
-          {!session ? (
+          {!session && authExpanded ? (
             <View style={styles.authForm}>
               <View style={styles.authInputsRow}>
                 <View style={styles.flexColumn}>
@@ -453,6 +470,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  authActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   flexColumn: {
     flex: 1,
   },
@@ -481,6 +503,10 @@ const styles = StyleSheet.create({
   },
   authForm: {
     gap: 16,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
   },
   authInputsRow: {
     flexDirection: 'row',

@@ -24,6 +24,7 @@ export default function Home() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [authExpanded, setAuthExpanded] = useState(false);
 
   const supabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -66,8 +67,10 @@ export default function Home() {
       setAuthStatus('idle');
       setMagicLinkSent(false);
       setFeedback(null);
+      setAuthExpanded(false);
     } else {
       setFeedback(INITIAL_FEEDBACK);
+      setAuthExpanded(false);
     }
   }, [session]);
 
@@ -91,6 +94,7 @@ export default function Home() {
       setAuthStatus('success');
       setAuthMessage('Signed in successfully.');
       setAuthPassword('');
+      setAuthExpanded(false);
     } catch (error) {
       handleAuthError(error, 'Unable to sign in with those credentials.');
     }
@@ -268,20 +272,31 @@ export default function Home() {
                 : 'Sign in to save journal entries and generate reflections.'}
             </p>
           </div>
-          {session ? (
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isAuthLoading}
-              className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Sign out
-            </button>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {!session ? (
+              <button
+                type="button"
+                onClick={() => setAuthExpanded((prev) => !prev)}
+                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+              >
+                {authExpanded ? 'Hide account actions' : 'Show account actions'}
+              </button>
+            ) : null}
+            {session ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={isAuthLoading}
+                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Sign out
+              </button>
+            ) : null}
+          </div>
         </div>
 
-        {!session ? (
-          <div className="flex flex-col gap-4">
+        {!session && authExpanded ? (
+          <div className="mt-2 flex flex-col gap-4 border-t border-slate-200 pt-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-slate-700" htmlFor="auth-email">

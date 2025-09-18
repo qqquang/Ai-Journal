@@ -89,6 +89,10 @@ describe('Home page', () => {
       screen.getByRole('button', { name: /sign in to generate/i }),
     ).toBeDisabled();
     expect(
+      screen.getByRole('button', { name: /show account actions/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    expect(
       screen.getByText(/sign in, capture a goal, and write an entry/i),
     ).toBeInTheDocument();
   });
