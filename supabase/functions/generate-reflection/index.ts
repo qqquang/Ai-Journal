@@ -181,7 +181,10 @@ async function tryGemini(goal: string, content: string): Promise<ReflectionRespo
       return null;
     }
 
-    return parsed;
+    return {
+      reflection: parsed.reflection,
+      action: parsed.action ?? buildAction(goal, content),
+    };
   } catch (error) {
     console.error("Unable to generate reflection via Gemini", error);
     return null;
