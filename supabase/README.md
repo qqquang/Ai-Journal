@@ -29,7 +29,25 @@ This migration creates:
 - `healthcheck`: simple table for connectivity tests.
 - Row Level Security (RLS) policies restricting access to the entry owner.
 
-## 4. Environment Variables
+## 4. Edge Function: `generate-reflection`
+1. Install the Supabase CLI if you have not already (`brew install supabase/tap/supabase`).
+2. Create an Edge Function stub:
+   ```bash
+   supabase functions new generate-reflection
+   ```
+3. Implement your AI call inside `supabase/functions/generate-reflection/index.ts`. The client expects a JSON response shaped like:
+   ```json
+   {
+     "reflection": "Concise AI reflection text",
+     "action": "Optional next action suggestion"
+   }
+   ```
+4. Deploy the function when you are ready:
+   ```bash
+   supabase functions deploy generate-reflection --project-ref <project-ref>
+   ```
+
+## 5. Environment Variables
 Populate the environment files with project keys:
 
 ```bash
@@ -46,13 +64,13 @@ Replace placeholders with values from **Settings → API**:
 
 For server-side admin tasks (e.g., scheduled jobs), store the service role key separately (never ship to client apps).
 
-## 5. Test the Connection
-- Web: `npm run dev:web` → click **Test Supabase Connection**.
-- Mobile: `npm run start:mobile` → press **Test Supabase Connection** in the simulator/Expo Go.
+## 6. Test the Connection
+- Web: `npm run dev:web` → sign in, add a journal entry, then press **Generate Reflection**.
+- Mobile: `npm run start:mobile` → sign in, add a journal entry, then press **Generate Reflection** in the simulator/Expo Go.
 
 If the healthcheck table exists and credentials are correct, you should see a success message. Otherwise the warnings will include the Supabase error for quick debugging.
 
-## 6. Next Steps
+## 7. Next Steps
 - Add database migrations for prompts, AI sessions, or analytics as features land.
 - Create Supabase Edge Functions for AI calls or scheduled summaries.
 - Set up backups and access policies before shipping to production.
