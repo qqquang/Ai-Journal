@@ -57,6 +57,10 @@ This migration creates:
      "http://localhost:54321/functions/v1/generate-reflection" \
      -d '{"entryId":"example","goal":"Ship MVP","content":"Today I iterated on the journaling screen and felt energized."}'
    ```
+7. Store your OpenAI key so the function can call the model (optional fallback will run without it):
+   ```bash
+   supabase secrets set OPENAI_API_KEY=sk-...
+   ```
 
 ## 5. Environment Variables
 Populate the environment files with project keys:

@@ -42,6 +42,12 @@ serve(async (request) => {
     return jsonResponse({ error: "Both entryId and content are required." }, 422);
   }
 
+  const aiResponse = await tryOpenAi(goal, content);
+
+  if (aiResponse) {
+    return jsonResponse(aiResponse, 200);
+  }
+
   const reflection = buildReflection(goal, content);
   const action = buildAction(goal, content);
 
@@ -118,6 +124,76 @@ function deriveTone(content: string): "upbeat" | "stressed" | "steady" {
 
 function matchCount(target: string, needles: string[]): number {
   return needles.reduce((count, needle) => (target.includes(needle) ? count + 1 : count), 0);
+}
+
+async function tryOpenAi(goal: string, content: string): Promise<ReflectionResponse | null> {
+  const openAiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openAiKey) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openAiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an empathetic journaling coach. Respond with concise JSON containing `reflection` and optional `action` fields.",
+          },
+          {
+            role: "user",
+            content: [
+              "Goal: ",
+              goal || "(none provided)",
+              "\nJournal entry: ",
+              content,
+              "\nReturn JSON, for example {\"reflection\":\"...\",\"action\":\"...\"}.",
+            ].join(""),
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("OpenAI request failed", response.status, await response.text());
+      return null;
+    }
+
+    const completion = await response.json();
+    const message: string | undefined = completion?.choices?.[0]?.message?.content;
+    if (!message) {
+      console.error("OpenAI completion missing content", completion);
+      return null;
+    }
+
+    const parsed = safeJsonParse<ReflectionResponse>(message);
+    if (!parsed?.reflection) {
+      console.error("OpenAI completion did not include reflection", message);
+      return null;
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error("Unable to generate reflection via OpenAI", error);
+    return null;
+  }
+}
+
+function safeJsonParse<T>(raw: string): T | null {
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.error("Failed to parse JSON", error, raw);
+    return null;
+  }
 }
 
 /**
