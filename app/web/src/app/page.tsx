@@ -1,7 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { Popover, Transition } from '@headlessui/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import type { Session } from '@supabase/supabase-js';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
@@ -34,6 +33,9 @@ export default function Home() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
 
   const supabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -71,6 +73,21 @@ export default function Home() {
   }, [supabase]);
 
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        menuOpen &&
+        menuContainerRef.current &&
+        !menuContainerRef.current.contains(event.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
+  useEffect(() => {
     if (session) {
       setAuthMessage(null);
       setAuthStatus('idle');
@@ -79,6 +96,7 @@ export default function Home() {
     } else {
       setFeedback(INITIAL_FEEDBACK);
     }
+    setMenuOpen(false);
   }, [session]);
 
   const handleAuthError = useCallback((error: unknown, fallback: string) => {
@@ -87,7 +105,7 @@ export default function Home() {
     setAuthMessage(message);
   }, []);
 
-  const handleSignIn = useCallback(async (onComplete?: () => void) => {
+  const handleSignIn = useCallback(async () => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -101,15 +119,13 @@ export default function Home() {
       setAuthStatus('success');
       setAuthMessage('Signed in successfully.');
       setAuthPassword('');
-      onComplete?.();
-      return true;
+      setMenuOpen(false);
     } catch (error) {
       handleAuthError(error, 'Unable to sign in with those credentials.');
-      return false;
     }
   }, [authEmail, authPassword, supabase, handleAuthError]);
 
-  const handleSignUp = useCallback(async (onComplete?: () => void) => {
+  const handleSignUp = useCallback(async () => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -123,11 +139,9 @@ export default function Home() {
       setAuthStatus('success');
       setAuthMessage('Account created. Check your inbox for a confirmation email.');
       setAuthPassword('');
-      onComplete?.();
-      return true;
+      setMenuOpen(false);
     } catch (error) {
       handleAuthError(error, 'Unable to sign up with those details.');
-      return false;
     }
   }, [authEmail, authPassword, supabase, handleAuthError]);
 
@@ -148,14 +162,12 @@ export default function Home() {
       setAuthStatus('success');
       setMagicLinkSent(true);
       setAuthMessage('Magic link sent. Check your email to finish signing in.');
-      return true;
     } catch (error) {
       handleAuthError(error, 'Unable to send a magic link right now.');
-      return false;
     }
   }, [authEmail, supabase, handleAuthError]);
 
-  const handleSignOut = useCallback(async (onComplete?: () => void) => {
+  const handleSignOut = useCallback(async () => {
     setAuthStatus('loading');
     setAuthMessage(null);
     try {
@@ -168,11 +180,9 @@ export default function Home() {
       setGoal('');
       setJournalEntry('');
       setAiResponse('');
-      onComplete?.();
-      return true;
+      setMenuOpen(false);
     } catch (error) {
       handleAuthError(error, 'Unable to sign out at the moment.');
-      return false;
     }
   }, [supabase, handleAuthError]);
 
@@ -282,127 +292,113 @@ export default function Home() {
             Ensure you are signed in so entries can be saved to Supabase.
           </p>
         </header>
-        <Popover className="relative h-fit">
-          {({ close }) => (
-            <>
-              <Popover.Button
-                aria-label="Account menu"
-                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
-              >
-                {session ? (
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
-                    {accountInitial}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <UserCircleIcon className="h-6 w-6 text-slate-700" />
-                    <span className="hidden sm:inline">Sign in</span>
-                  </span>
-                )}
-              </Popover.Button>
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="opacity-0 translate-y-1"
-                enterTo="opacity-100 translate-y-0"
-                leave="transition ease-in duration-75"
-                leaveFrom="opacity-100 translate-y-0"
-                leaveTo="opacity-0 translate-y-1"
-              >
-                <Popover.Panel className="absolute right-0 z-30 mt-3 w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-lg">
-                  {session ? (
-                    <div className="flex flex-col gap-3">
-                      <p className="text-sm text-slate-600">
-                        Signed in as {session.user.email ?? 'your account'}.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await handleSignOut(() => close());
-                        }}
-                        className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-                        disabled={isAuthLoading}
-                      >
-                        Sign out
-                      </button>
-                    </div>
-                  ) : (
-                    <form
-                      className="flex flex-col gap-3"
-                      onSubmit={async (event) => {
-                        event.preventDefault();
-                        await handleSignIn(() => close());
-                      }}
+        <div ref={menuContainerRef} className="relative">
+          <button
+            type="button"
+            aria-label="Account menu"
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((prev) => !prev)}
+            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+          >
+            {session ? (
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+                {accountInitial}
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <UserCircleIcon className="h-6 w-6 text-slate-700" />
+                <span className="hidden sm:inline">Sign in</span>
+              </span>
+            )}
+          </button>
+          {menuOpen ? (
+            <div className="absolute right-0 z-30 mt-3 w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-lg">
+              {session ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-slate-600">
+                    Signed in as {session.user.email ?? 'your account'}.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={isAuthLoading}
+                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <form
+                  className="flex flex-col gap-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleSignIn();
+                  }}
+                >
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-slate-700" htmlFor="account-email">
+                      Email
+                    </label>
+                    <input
+                      id="account-email"
+                      type="email"
+                      autoComplete="email"
+                      value={authEmail}
+                      onChange={(event) => setAuthEmail(event.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-slate-700" htmlFor="account-password">
+                      Password
+                    </label>
+                    <input
+                      id="account-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={authPassword}
+                      onChange={(event) => setAuthPassword(event.target.value)}
+                      placeholder="Choose a secure password"
+                      className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="submit"
+                      className="inline-flex flex-1 items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                      disabled={isAuthLoading}
                     >
-                      <div className="flex flex-col gap-1">
-                        <label className="text-sm font-medium text-slate-700" htmlFor="account-email">
-                          Email
-                        </label>
-                        <input
-                          id="account-email"
-                          type="email"
-                          autoComplete="email"
-                          value={authEmail}
-                          onChange={(event) => setAuthEmail(event.target.value)}
-                          placeholder="you@example.com"
-                          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-900 focus:outline-none"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-sm font-medium text-slate-700" htmlFor="account-password">
-                          Password
-                        </label>
-                        <input
-                          id="account-password"
-                          type="password"
-                          autoComplete="current-password"
-                          value={authPassword}
-                          onChange={(event) => setAuthPassword(event.target.value)}
-                          placeholder="Choose a secure password"
-                          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-900 focus:outline-none"
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="submit"
-                          className="inline-flex flex-1 items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                          disabled={isAuthLoading}
-                        >
-                          Sign in
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await handleSignUp(() => close());
-                          }}
-                          className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                          disabled={isAuthLoading}
-                        >
-                          Sign up
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await handleMagicLink();
-                        }}
-                        className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={isAuthLoading || magicLinkSent}
-                      >
-                        {magicLinkSent ? 'Magic link sent' : 'Send magic link'}
-                      </button>
-                      {authMessage ? (
-                        <p className={`text-xs ${authStatus === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
-                          {authMessage}
-                        </p>
-                      ) : null}
-                    </form>
-                  )}
-                </Popover.Panel>
-              </Transition>
-            </>
-          )}
-        </Popover>
+                      Sign in
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSignUp}
+                      className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isAuthLoading}
+                    >
+                      Sign up
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleMagicLink}
+                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isAuthLoading || magicLinkSent}
+                  >
+                    {magicLinkSent ? 'Magic link sent' : 'Send magic link'}
+                  </button>
+                  {authMessage ? (
+                    <p className={`text-xs ${authStatus === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {authMessage}
+                    </p>
+                  ) : null}
+                </form>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <section className="flex w-full max-w-3xl flex-col gap-6">
