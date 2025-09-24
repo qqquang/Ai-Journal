@@ -30,6 +30,11 @@ type DailyGoalsState = {
   stories: StoryEntry[];
 };
 
+type SupabaseSessionResponse = {
+  data: { session: Session | null } | null;
+  error: unknown;
+};
+
 const getTodayKey = () => {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -326,12 +331,12 @@ export default function Home() {
           },
           { onConflict: 'user_id' },
         )
-        .then(({ error }) => {
+        .then(({ error }: { error: unknown }) => {
           if (error) {
             console.error('Failed to save journal draft', error);
           }
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           console.error('Unexpected error saving journal draft', error);
         });
     }, 600);
@@ -475,10 +480,12 @@ export default function Home() {
 
     let isMounted = true;
 
-    supabase.auth.getSession().then(({ data, error }) => {
+    supabase.auth.getSession().then((result: SupabaseSessionResponse) => {
       if (!isMounted) {
         return;
       }
+
+      const { data, error } = result;
 
       if (error) {
         console.error('Failed to fetch session', error);
@@ -486,12 +493,12 @@ export default function Home() {
         return;
       }
 
-      setSession(data.session ?? null);
+      setSession(data?.session ?? null);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((_event: string, nextSession: Session | null) => {
       setSession(nextSession);
     });
 

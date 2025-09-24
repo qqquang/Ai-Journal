@@ -181,16 +181,21 @@ export const createSupabaseServerClient = (cookieStore: ReturnType<typeof cookie
     return createSupabaseTestStub();
   }
 
+  const store = cookieStore as unknown as {
+    get(name: string): { value: string } | undefined;
+    set(options: { name: string; value: string } & CookieOptions): void;
+  };
+
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
-        return cookieStore.get(name)?.value;
+        return store.get(name)?.value;
       },
       set(name: string, value: string, options: CookieOptions) {
-        cookieStore.set({ name, value, ...options });
+        store.set({ name, value, ...options });
       },
       remove(name: string, options: CookieOptions) {
-        cookieStore.set({ name, value: '', ...options });
+        store.set({ name, value: '', ...options });
       },
     },
   });
