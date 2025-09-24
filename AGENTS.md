@@ -16,8 +16,12 @@
 - Run `npm install` at the repo root to hydrate workspaces. Core scripts:
   - `npm run dev:web` / `npm run build:web` / `npm run lint:web` / `npm run test:web`
   - `npm run start:mobile` / `npm run lint:mobile` / `npm run test:mobile`
+  - `npm run mcp:playwright` starts the local Playwright MCP server for AI-assisted browser automation.
+  - `npm run test:web:e2e` launches Playwright end-to-end tests for the web app.
+    * Playwright sets `NEXT_PUBLIC_SUPABASE_TEST_STUB=1` so Supabase calls are stubbed during tests.
 - Web app includes `app/web/.env.local.example`; copy to `.env.local` with Supabase URL and anon key. Mobile uses `app/mobile/.env.example`.
 - Record extra utilities (`npm run seed:demo`, migrations) inside `package.json` and mirror them here.
+- Journaling entries auto-trigger AI reflections after text input; the button remains available for manual retries.
 
 ## Coding Style & Naming Conventions
 - TypeScript with 2-space indentation; camelCase for variables/functions, PascalCase for components, kebab-case file names (`journal-timeline.tsx`).

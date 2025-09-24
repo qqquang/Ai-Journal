@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "app/web",
-    "app/mobile"
+    "app/mobile",
+    "tools/playwright-mcp"
   ],
   "scripts": {
     "dev:web": "npm --workspace app/web run dev",
@@ -12,6 +13,9 @@
     "test:web": "npm --workspace app/web run test",
     "start:mobile": "npm --workspace app/mobile run start",
     "lint:mobile": "npm --workspace app/mobile run lint",
-    "test:mobile": "npm --workspace app/mobile run test"
+    "test:mobile": "npm --workspace app/mobile run test",
+    "mcp:playwright": "npm --workspace tools/playwright-mcp run start",
+    "test:web:e2e": "npm --workspace app/web run test:e2e",
+    "mcp:playwright:sample": "node tools/playwright-mcp/scripts/run-sample.mjs"
   }
 }

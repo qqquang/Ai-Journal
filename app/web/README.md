@@ -1,36 +1,19 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Web App
 
-## Getting Started
+Next.js companion experience for the AI journaling platform. Uses the App Router, Tailwind CSS 4, and Supabase SSR helpers.
 
-First, run the development server:
+## Scripts
+- `npm run dev` starts the development server on port 3000.
+- `npm run lint` runs Next.js ESLint rules.
+- `npm run test` executes unit tests with Jest and React Testing Library.
+- `npm run test:e2e` runs Playwright end-to-end tests (auto-starts the dev server).
+- `npm run test:e2e:ui` opens the Playwright inspector.
+- AI reflections generate automatically once a journal entry is captured; the button remains as a manual fallback.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## End-to-End Testing
+1. Install Playwright browsers once per machine: `npx playwright install`.
+2. Run `npm run test:e2e` from this workspace or `npm run test:web:e2e` at the monorepo root (defaults to port 3100).
+3. Optionally set `PLAYWRIGHT_BASE_URL`, `PLAYWRIGHT_HOST`, or `PLAYWRIGHT_PORT` env vars to test against different environments.
+4. Supabase calls are stubbed during tests via `NEXT_PUBLIC_SUPABASE_TEST_STUB=1`; unset or override to exercise a real backend.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Test specs live in `tests/e2e`. Keep flows focused on the journaling loop (capture → reflection → suggested action).

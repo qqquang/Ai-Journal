@@ -1,0 +1,16 @@
+{
+  "name": "@ai-journal/playwright-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "playwright-mcp"
+  },
+  "dependencies": {
+    "playwright": "^1.55.1",
+    "playwright-mcp": "^0.0.12"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1"
+  }
+}
