@@ -11,7 +11,7 @@ Companion application for iOS and Android built on Expo SDK 51 / React Native 0.
   npm install -g expo-cli
   ```
 - Access to the shared Supabase project (URL + anon key)
-- App Store bundle identifier: `com.growtoday.growtoday`
+- App Store bundle identifier: `com.igrowtoday.igrowtoday`
 
 ## Setup
 

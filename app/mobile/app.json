@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.growtoday.growtoday"
+      "bundleIdentifier": "com.igrowtoday.igrowtoday"
     },
     "android": {
       "adaptiveIcon": {

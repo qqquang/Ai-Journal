@@ -93,7 +93,7 @@ Open the Expo DevTools, run on a simulator/device, and provide matching Supabase
 ## Deployment notes
 
 - **Web**: Deploy via Vercel; build command `npm run build`, output `.next`, root directory `app/web`. Configure Supabase env vars in Vercel and redeploy the edge function when prompts change.
-- **Mobile**: Build OTA updates through Expo (`expo publish`) or native binaries via `eas build`. Bundle identifier is `com.growtoday.growtoday`—use this in App Store Connect and keep it stable across releases. Ensure that `babel.config.js` and `babel-preset-expo` stay in sync.
+- **Mobile**: Build OTA updates through Expo (`expo publish`) or native binaries via `eas build`. Bundle identifier is `com.igrowtoday.igrowtoday`—use this in App Store Connect and keep it stable across releases. Ensure that `babel.config.js` and `babel-preset-expo` stay in sync.
 
 ## Additional resources
 
